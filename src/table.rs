@@ -823,14 +823,20 @@ struct GroupDataInfo {
     pub file: usize,
     pub color: Color,
     pub pieces: Pieces,
-    pub order: [u8 ;2],
+    pub order: [u8; 2],
 }
 
 impl std::fmt::Debug for GroupDataInfo {
-     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "file: {}, color: {}, pieces: {:?}, order: {:?}",self.file, self.color, self.pieces.iter().map(|p| p.char()).collect::<String>(), self.order)
-     }
-
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "file: {}, color: {}, pieces: {:?}, order: {:?}",
+            self.file,
+            self.color,
+            self.pieces.iter().map(|p| p.char()).collect::<String>(),
+            self.order
+        )
+    }
 }
 
 type InfoTable = ArrayVec<ArrayVec<GroupDataInfo, 2>, 4>;
@@ -1025,7 +1031,7 @@ impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
         })
     }
 
-pub fn get_info(raf: F, material: &Material) -> ProbeResult<InfoTable> {
+    pub fn get_info(raf: F, material: &Material) -> ProbeResult<InfoTable> {
         let material = material.clone();
         assert!(material.count() <= MAX_PIECES);
         assert!(material.by_color.white.count() >= 1);
@@ -1124,7 +1130,7 @@ pub fn get_info(raf: F, material: &Material) -> ProbeResult<InfoTable> {
                 ensure!(key == Material::from_iter(files[0][0].pieces.clone()));
             }
         }
-    Ok(files)
+        Ok(files)
     }
 
     /// Retrieves the value stored for `idx` by decompressing Huffman coded
@@ -1605,12 +1611,11 @@ impl<S: Position + Syzygy> DtzTable<S, RandomAccessFile> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use shakmaty::{fen::Fen, CastlingMode, Chess, Square, Color::*};
-    use std::path::Path;
     use super::*;
+    use shakmaty::{fen::Fen, CastlingMode, Chess, Color::*, Square};
+    use std::path::Path;
 
     fn p(s: &str) -> Pieces {
         s.chars().map(|c| Piece::from_char(c).unwrap()).collect()
@@ -1621,7 +1626,10 @@ mod tests {
         let path = Path::new("./norm_factor_table/KBNvK.rtbw");
         let material = Material::from_str("KBNvK").unwrap();
         let wdl = WdlTable::<Chess, _>::open(path, &material).unwrap();
-        let chess: Chess = Fen::from_ascii(b"8/8/8/8/8/8/8/KNBk4 w - - 0 1").unwrap().into_position(CastlingMode::Chess960).unwrap();
+        let chess: Chess = Fen::from_ascii(b"8/8/8/8/8/8/8/KNBk4 w - - 0 1")
+            .unwrap()
+            .into_position(CastlingMode::Chess960)
+            .unwrap();
         let (_, idx) = wdl.table.encode(&chess).unwrap().unwrap();
         assert_eq!(idx, 484157);
     }
@@ -1631,23 +1639,28 @@ mod tests {
         let path = Path::new("./norm_factor_table/KBNvK.rtbw");
         let material = Material::from_str("KBNvK").unwrap();
         // let wdl = WdlTable::<Chess, _>::open(path, &material).unwrap();
-        let info: InfoTable = ArrayVec::from_iter([
-            [ GroupDataInfo {
-                file: 0,
-                order: [1, 15],
-                color: White,
-                pieces: p("kBNK")
-            },
-            GroupDataInfo {
-                file: 0,
-                order: [1, 15],
-                color: Black,
-                pieces: p("kBNK")
-            }
-            ]
-        ].into_iter().map(|x| ArrayVec::from_iter(x.into_iter())));
-        assert_eq!(info, Table::<WdlTag, Chess, _>::get_info(open_table_file(path).unwrap(), &material).unwrap())
-
+        let info: InfoTable = ArrayVec::from_iter(
+            [[
+                GroupDataInfo {
+                    file: 0,
+                    order: [1, 15],
+                    color: White,
+                    pieces: p("kBNK"),
+                },
+                GroupDataInfo {
+                    file: 0,
+                    order: [1, 15],
+                    color: Black,
+                    pieces: p("kBNK"),
+                },
+            ]]
+            .into_iter()
+            .map(|x| ArrayVec::from_iter(x.into_iter())),
+        );
+        assert_eq!(
+            info,
+            Table::<WdlTag, Chess, _>::get_info(open_table_file(path).unwrap(), &material).unwrap()
+        )
     }
 
     #[test]
@@ -1655,24 +1668,27 @@ mod tests {
         let path = Path::new("./partial_dl/KQQQQvK.rtbw");
         let material = Material::from_str("KQQQQvK").unwrap();
         // let wdl = WdlTable::<Chess, _>::open(path, &material).unwrap();
-        let info: InfoTable = ArrayVec::from_iter([
-            [ GroupDataInfo {
-                file: 0,
-                order: [0, 15],
-                color: White,
-                pieces: p("KkQQQQ")
-            },
-            GroupDataInfo {
-                file: 0,
-                order: [0, 15],
-                color: Black,
-                pieces: p("kKQQQQ")
-            }
-            ]
-        ].into_iter().map(|x| ArrayVec::from_iter(x.into_iter())));
-        assert_eq!(info, Table::<WdlTag, Chess, _>::get_info(open_table_file(path).unwrap(), &material).unwrap())
-
+        let info: InfoTable = ArrayVec::from_iter(
+            [[
+                GroupDataInfo {
+                    file: 0,
+                    order: [0, 15],
+                    color: White,
+                    pieces: p("KkQQQQ"),
+                },
+                GroupDataInfo {
+                    file: 0,
+                    order: [0, 15],
+                    color: Black,
+                    pieces: p("kKQQQQ"),
+                },
+            ]]
+            .into_iter()
+            .map(|x| ArrayVec::from_iter(x.into_iter())),
+        );
+        assert_eq!(
+            info,
+            Table::<WdlTag, Chess, _>::get_info(open_table_file(path).unwrap(), &material).unwrap()
+        )
     }
-
 }
-
