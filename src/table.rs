@@ -459,7 +459,7 @@ fn parse_pieces<F: ReadAt>(raf: &F, ptr: u64, count: usize, side: Color) -> Prob
     for p in bytes {
         pieces.push(u!(nibble_to_piece(side.fold_wb(*p & 0xf, *p >> 4))));
     }
-
+    println!("{pieces:?}");
     Ok(pieces)
 }
 
@@ -508,6 +508,7 @@ struct GroupData {
 
 impl GroupData {
     pub fn new<S: Syzygy>(pieces: Pieces, order: [u8; 2], file: usize) -> ProbeResult<GroupData> {
+        println!("order: {order:?}, file: {file:?}");
         ensure!(pieces.len() >= 2);
 
         let material = Material::from_iter(pieces.clone());
@@ -556,16 +557,18 @@ impl GroupData {
 
         factors[lens.len()] = idx;
 
-        Ok(GroupData {
+        let _self = Self {
             pieces,
             lens,
             factors,
-        })
+        };
+        // println!("order: {order:?}, file: {file:?}, GroupData: {_self:?}");
+        Ok(_self)
     }
 }
 
 /// Indexes into table of remapped DTZ values.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum DtzMap {
     /// Normal 8-bit DTZ map.
     Normal { map_ptr: u64, by_wdl: [u16; 4] },
@@ -596,7 +599,7 @@ impl DtzMap {
 }
 
 /// Description of encoding and compression.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct PairsData {
     /// Encoding flags.
     flags: Flag,
@@ -884,6 +887,7 @@ impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
                         },
                     ],
                 ];
+                println!("file: {file:?}, order: {order:?}");
 
                 ptr += 1 + if pp { 1 } else { 0 };
 
@@ -939,6 +943,7 @@ impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
                     })
                     .collect::<ProbeResult<ArrayVec<_, 2>>>()?;
 
+                // println!("Groups of FileData: {:?}", sides.clone().into_iter().map(|x| x.groups).collect::<Vec<_>>());
                 Ok(FileData { sides })
             })
             .collect::<ProbeResult<ArrayVec<_, 4>>>()?;
@@ -991,7 +996,7 @@ impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
                 ptr = u!(ptr.checked_add(u64::from(side.blocks_num) * u64::from(side.block_size)));
             }
         }
-
+        println!("files at the end {:?}", files[0].sides[0].groups);
         // Result.
         Ok(Table {
             is_wdl: PhantomData,
@@ -1376,7 +1381,7 @@ impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
             group_sq += side.groups.lens[next];
             next += 1;
         }
-
+        println!("pos: {:?}, idx: {idx:?}", pos.board());
         Ok(Some((side, idx)))
     }
 
@@ -1480,3 +1485,23 @@ impl<S: Position + Syzygy> DtzTable<S, RandomAccessFile> {
         DtzTable::new(open_table_file(path)?, material)
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use shakmaty::{fen::Fen, CastlingMode, Chess, Square};
+    use std::path::Path;
+    use super::*;
+
+    #[test]
+    fn test_wdl_table() {
+        let path = Path::new("./norm_factor_table/KBNvK.rtbw");
+        let material = Material::from_str("KBNvK").unwrap();
+        let wdl = WdlTable::<Chess, _>::open(path, &material).unwrap();
+        let chess: Chess = Fen::from_ascii(b"8/8/8/8/8/8/8/KNBk4 w - - 0 1").unwrap().into_position(CastlingMode::Chess960).unwrap();
+        let (_, idx) = wdl.table.encode(&chess).unwrap().unwrap();
+        assert_eq!(idx, 4841570);
+    }
+
+}
+

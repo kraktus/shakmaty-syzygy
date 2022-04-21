@@ -103,6 +103,7 @@ impl<S: Position + Clone + Syzygy> Tablebase<S> {
             }
         }
 
+        println!("num {:?}", num);
         Ok(num)
     }
 
@@ -157,6 +158,7 @@ impl<S: Position + Clone + Syzygy> Tablebase<S> {
         }
 
         self.max_pieces = max(self.max_pieces, pieces);
+        println!("FILE ADDED");
         Ok(())
     }
 
