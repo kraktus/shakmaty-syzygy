@@ -818,6 +818,23 @@ struct Table<T: TableTag, P: Position + Syzygy, F: ReadAt> {
     files: ArrayVec<FileData, 4>,
 }
 
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct GroupDataInfo {
+    pub file: usize,
+    pub color: Color,
+    pub pieces: Pieces,
+    pub order: [u8 ;2],
+}
+
+impl std::fmt::Debug for GroupDataInfo {
+     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "file: {}, color: {}, pieces: {:?}, order: {:?}",self.file, self.color, self.pieces.iter().map(|p| p.char()).collect::<String>(), self.order)
+     }
+
+}
+
+type InfoTable = ArrayVec<ArrayVec<GroupDataInfo, 2>, 4>;
+
 impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
     /// Open a table, parse the header, the headers of the subtables and
     /// prepare meta data required for decompression.
@@ -1006,6 +1023,108 @@ impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
             min_like_man: material.min_like_man(),
             files,
         })
+    }
+
+pub fn get_info(raf: F, material: &Material) -> ProbeResult<InfoTable> {
+        let material = material.clone();
+        assert!(material.count() <= MAX_PIECES);
+        assert!(material.by_color.white.count() >= 1);
+        assert!(material.by_color.black.count() >= 1);
+
+        // Check magic.
+        let (magic, pawnless_magic) = match T::METRIC {
+            Metric::Wdl => (S::TBW.magic, S::PAWNLESS_TBW.map(|t| t.magic)),
+            Metric::Dtz => (S::TBZ.magic, S::PAWNLESS_TBZ.map(|t| t.magic)),
+        };
+
+        let magic_header = read_magic_header(&raf)?;
+        if magic != magic_header
+            && (material.has_pawns() || pawnless_magic.map_or(true, |m| m != magic_header))
+        {
+            return Err(ProbeError::Magic {
+                magic: magic_header,
+            });
+        }
+
+        // Read layout flags.
+        let layout = Layout::from_bits_truncate(raf.read_u8_at(4)?);
+        let has_pawns = layout.contains(Layout::HAS_PAWNS);
+        let split = layout.contains(Layout::SPLIT);
+
+        // Check consistency of layout and material key.
+        ensure!(has_pawns == material.has_pawns());
+        ensure!(split != material.is_symmetric());
+
+        // Read group data.
+        let pp = material.by_color.white.has_pawns() && material.by_color.black.has_pawns();
+        let num_files = if has_pawns { 4 } else { 1 };
+        let num_sides = if T::METRIC == Metric::Wdl && !material.is_symmetric() {
+            2
+        } else {
+            1
+        };
+
+        let mut ptr = 5;
+
+        let files = (0..num_files)
+            .map(|file| {
+                let order = [
+                    [
+                        raf.read_u8_at(ptr)? & 0xf,
+                        if pp {
+                            raf.read_u8_at(ptr + 1)? & 0xf
+                        } else {
+                            0xf
+                        },
+                    ],
+                    [
+                        raf.read_u8_at(ptr)? >> 4,
+                        if pp {
+                            raf.read_u8_at(ptr + 1)? >> 4
+                        } else {
+                            0xf
+                        },
+                    ],
+                ];
+                println!("file: {file:?}, order: {order:?}");
+
+                ptr += 1 + if pp { 1 } else { 0 };
+
+                let sides = [Color::White, Color::Black]
+                    .iter()
+                    .take(num_sides)
+                    .map(|side| {
+                        let pieces = parse_pieces(&raf, ptr, material.count(), *side)?;
+                        let key = Material::from_iter(pieces.clone());
+                        ensure!(key == material || key.into_flipped() == material);
+                        Ok(GroupDataInfo {
+                            file,
+                            color: *side,
+                            pieces,
+                            order: order[side.fold_wb(0, 1)],
+                        })
+                    })
+                    .collect::<ProbeResult<ArrayVec<_, 2>>>()?;
+
+                ptr += material.count() as u64;
+
+                Ok(sides)
+            })
+            .collect::<ProbeResult<ArrayVec<_, 4>>>()?;
+
+        ptr += ptr & 1;
+
+        // Ensure reference pawn goes first.
+        ensure!((files[0][0].pieces[0].role == Role::Pawn) == has_pawns);
+
+        // Ensure material is consistent with first file.
+        for file in files.iter() {
+            for side in file.iter() {
+                let key = Material::from_iter(side.pieces.clone());
+                ensure!(key == Material::from_iter(files[0][0].pieces.clone()));
+            }
+        }
+    Ok(files)
     }
 
     /// Retrieves the value stored for `idx` by decompressing Huffman coded
@@ -1489,9 +1608,13 @@ impl<S: Position + Syzygy> DtzTable<S, RandomAccessFile> {
 
 #[cfg(test)]
 mod tests {
-    use shakmaty::{fen::Fen, CastlingMode, Chess, Square};
+    use shakmaty::{fen::Fen, CastlingMode, Chess, Square, Color::*};
     use std::path::Path;
     use super::*;
+
+    fn p(s: &str) -> Pieces {
+        s.chars().map(|c| Piece::from_char(c).unwrap()).collect()
+    }
 
     #[test]
     fn test_wdl_table() {
@@ -1500,7 +1623,55 @@ mod tests {
         let wdl = WdlTable::<Chess, _>::open(path, &material).unwrap();
         let chess: Chess = Fen::from_ascii(b"8/8/8/8/8/8/8/KNBk4 w - - 0 1").unwrap().into_position(CastlingMode::Chess960).unwrap();
         let (_, idx) = wdl.table.encode(&chess).unwrap().unwrap();
-        assert_eq!(idx, 4841570);
+        assert_eq!(idx, 484157);
+    }
+
+    #[test]
+    fn test_group_data_info() {
+        let path = Path::new("./norm_factor_table/KBNvK.rtbw");
+        let material = Material::from_str("KBNvK").unwrap();
+        // let wdl = WdlTable::<Chess, _>::open(path, &material).unwrap();
+        let info: InfoTable = ArrayVec::from_iter([
+            [ GroupDataInfo {
+                file: 0,
+                order: [1, 15],
+                color: White,
+                pieces: p("kBNK")
+            },
+            GroupDataInfo {
+                file: 0,
+                order: [1, 15],
+                color: Black,
+                pieces: p("kBNK")
+            }
+            ]
+        ].into_iter().map(|x| ArrayVec::from_iter(x.into_iter())));
+        assert_eq!(info, Table::<WdlTag, Chess, _>::get_info(open_table_file(path).unwrap(), &material).unwrap())
+
+    }
+
+    #[test]
+    fn test_data_info_partial_dl() {
+        let path = Path::new("./partial_dl/KQQQQvK.rtbw");
+        let material = Material::from_str("KQQQQvK").unwrap();
+        // let wdl = WdlTable::<Chess, _>::open(path, &material).unwrap();
+        let info: InfoTable = ArrayVec::from_iter([
+            [ GroupDataInfo {
+                file: 0,
+                order: [0, 15],
+                color: White,
+                pieces: p("KkQQQQ")
+            },
+            GroupDataInfo {
+                file: 0,
+                order: [0, 15],
+                color: Black,
+                pieces: p("kKQQQQ")
+            }
+            ]
+        ].into_iter().map(|x| ArrayVec::from_iter(x.into_iter())));
+        assert_eq!(info, Table::<WdlTag, Chess, _>::get_info(open_table_file(path).unwrap(), &material).unwrap())
+
     }
 
 }
