@@ -46,19 +46,19 @@ const fn binomial(mut n: u64, k: u64) -> u64 {
     r
 }
 
-trait TableTag {
+pub trait TableTag {
     const METRIC: Metric;
 }
 
 #[derive(Debug)]
-enum WdlTag {}
+pub enum WdlTag {}
 
 impl TableTag for WdlTag {
     const METRIC: Metric = Metric::Wdl;
 }
 
 #[derive(Debug)]
-enum DtzTag {}
+pub enum DtzTag {}
 
 impl TableTag for DtzTag {
     const METRIC: Metric = Metric::Dtz;
@@ -807,7 +807,7 @@ struct FileData {
 
 /// A Syzygy table.
 #[derive(Debug)]
-struct Table<T: TableTag, P: Position + Syzygy, F: ReadAt> {
+pub struct Table<T: TableTag, P: Position + Syzygy, F: ReadAt> {
     is_wdl: PhantomData<T>,
     syzygy: PhantomData<P>,
 
@@ -819,9 +819,7 @@ struct Table<T: TableTag, P: Position + Syzygy, F: ReadAt> {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-struct GroupDataInfo {
-    pub file: usize,
-    pub color: Color,
+pub struct GroupDataInfo {
     pub pieces: Pieces,
     pub order: [u8; 2],
 }
@@ -830,9 +828,7 @@ impl std::fmt::Debug for GroupDataInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "file: {}, color: {}, pieces: {:?}, order: {:?}",
-            self.file,
-            self.color,
+            "pieces: {:?}, order: {:?}",
             self.pieces.iter().map(|p| p.char()).collect::<String>(),
             self.order
         )
@@ -1104,8 +1100,6 @@ impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
                         let key = Material::from_iter(pieces.clone());
                         ensure!(key == material || key.into_flipped() == material);
                         Ok(GroupDataInfo {
-                            file,
-                            color: *side,
                             pieces,
                             order: order[side.fold_wb(0, 1)],
                         })
@@ -1555,7 +1549,7 @@ impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
     }
 }
 
-fn open_table_file<P: AsRef<Path>>(path: P) -> ProbeResult<RandomAccessFile> {
+pub fn open_table_file<P: AsRef<Path>>(path: P) -> ProbeResult<RandomAccessFile> {
     let file = fs::File::open(path)?;
     ensure!(file.metadata()?.len() % 64 == 16);
     Ok(RandomAccessFile::try_new(file)?)

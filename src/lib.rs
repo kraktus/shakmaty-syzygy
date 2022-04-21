@@ -64,7 +64,7 @@
 #[macro_use]
 mod errors;
 mod material;
-mod table;
+pub mod table;
 mod tablebase;
 mod types;
 

@@ -130,7 +130,7 @@ impl Material {
         material
     }
 
-    pub(crate) fn from_str(s: &str) -> Result<Material, ()> {
+    pub fn from_str(s: &str) -> Result<Material, ()> {
         if s.len() > 64 + 1 {
             return Err(());
         }
@@ -144,7 +144,7 @@ impl Material {
         })
     }
 
-    pub(crate) fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.by_color.iter().map(|side| side.count()).sum()
     }
 
