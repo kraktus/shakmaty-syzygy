@@ -16,12 +16,10 @@ use shakmaty_syzygy::{
     Material, MaybeRounded
 };
 
-
-
 fn main() -> Result<()> {
     let paths = fs::read_dir("./partial_dl")?;
     let mut o = File::create("encoding.json")?;
-    let mut r: Vec<(String, InfoTable)> = Vec::new();
+    let mut r: HashMap<String, InfoTable> = HashMap::new();
     for path_opt in paths {
         if let Ok(path) = path_opt {
             let path_ = path.path();
@@ -29,7 +27,7 @@ fn main() -> Result<()> {
             let (material_str, _) = file_name.split_once(".").unwrap();
             let material = Material::from_str(material_str).unwrap();
             let infos = Table::<WdlTag, Chess, _>::get_info(open_table_file(path_)?, &material)?;
-            r.push((material_str.to_string(), infos));
+            r.insert(material_str.to_string(), infos);
         }
     }
     let mut formatter = Serializer::pretty(o);
