@@ -27,13 +27,15 @@ use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct GroupDataInfo {{
-    pub pieces: Pieces,
+    pub pieces: Vec<Piece>,
     pub order: [u8; 2],
 }}
 
-type InfoTable = ArrayVec<ArrayVec<GroupDataInfo, 2>, 4>
+type InfoTable = ArrayVec<ArrayVec<GroupDataInfo, 2>, 4>;
 
-static ENCODING: HashMap<Material, InfoTable> = [
+#[rustfmt::skip]
+pub fn get_info_table() -> HashMap<Material, InfoTable> {{
+    [
 "#);
 
     for path_opt in paths {
@@ -48,33 +50,33 @@ static ENCODING: HashMap<Material, InfoTable> = [
             let nb_side = infos[0].len();
             write!(
                 o,
-                "     (Material::from_str({material_str}).unwrap(), ["
+                "     (Material::from_str(\"{material_str}\").unwrap(), ArrayVec::from_iter(["
             );
             for info in infos {
                 write!(o, "
-                     [");
+                     ArrayVec::from_iter([");
                 for side in info {
                     write!(
                         o,
                         "GroupDataInfo {{
-        pieces: {:?}.into_iter().collect(),
+        pieces: vec!{:?},
         order: {:?}
     }},",
                         side.pieces, side.order
                     );
                 }
                 write!(o, "
-                     ].into_iter().map(|x| ArrayVec::from_iter(x.into_iter())),");
+                     ]),");
             }
             write!(
                 o,
-                "]),
+                "])),
 
 "
             );
-            break;
         }
     }
-    write!(o, r"].into_iter().collect();");
+    write!(o, r"    ].into_iter().collect()
+}}");
     Ok(())
 }
