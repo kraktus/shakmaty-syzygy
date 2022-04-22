@@ -22,6 +22,8 @@ use byteorder::{ByteOrder as _, ReadBytesExt as _, BE, LE};
 use itertools::Itertools as _;
 use positioned_io::{RandomAccessFile, ReadAt, ReadBytesAtExt as _};
 use shakmaty::{Bitboard, Color, File, Piece, Position, Rank, Role, Square};
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeStruct;
 
 use crate::{
     errors::{ProbeError, ProbeResult},
@@ -824,6 +826,21 @@ pub struct GroupDataInfo {
     pub order: [u8; 2],
 }
 
+fn pieces_to_str(p: &Pieces) -> String {
+    p.iter().map(|c| c.char()).collect()
+}
+
+impl Serialize for GroupDataInfo {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer {
+            let mut state = serializer.serialize_struct("GroupDataInfo", 2)?;
+            state.serialize_field("pieces", &pieces_to_str(&self.pieces))?;
+            state.serialize_field("order", &self.order)?;
+            state.end()
+        }
+}
+
 impl std::fmt::Debug for GroupDataInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -835,7 +852,7 @@ impl std::fmt::Debug for GroupDataInfo {
     }
 }
 
-type InfoTable = ArrayVec<ArrayVec<GroupDataInfo, 2>, 4>;
+pub type InfoTable = ArrayVec<ArrayVec<GroupDataInfo, 2>, 4>;
 
 impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
     /// Open a table, parse the header, the headers of the subtables and
