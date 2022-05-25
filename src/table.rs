@@ -1646,6 +1646,32 @@ mod tests {
     }
 
     #[test]
+    fn test_wdl_table_2() {
+        let path = Path::new("./norm_factor_table/KBNvK.rtbw");
+        let material = Material::from_str("KBNvK").unwrap();
+        let wdl = WdlTable::<Chess, _>::open(path, &material).unwrap();
+        let chess: Chess = Fen::from_ascii(b"8/8/2B5/3N4/8/2K2k2/8/8 w - - 0 1")
+            .unwrap()
+            .into_position(CastlingMode::Chess960)
+            .unwrap();
+        let (_, idx) = wdl.table.encode(&chess).unwrap().unwrap();
+        assert_eq!(idx, 1907795);
+    }
+
+    #[test]
+    fn test_wdl_table_3() {
+        let path = Path::new("./norm_factor_table/KBNvK.rtbw");
+        let material = Material::from_str("KBNvK").unwrap();
+        let wdl = WdlTable::<Chess, _>::open(path, &material).unwrap();
+        let chess: Chess = Fen::from_ascii(b"8/8/2k5/8/4N3/2K2B2/8/8 w - - 0 1")
+            .unwrap()
+            .into_position(CastlingMode::Chess960)
+            .unwrap();
+        let (_, idx) = wdl.table.encode(&chess).unwrap().unwrap();
+        assert_eq!(idx, 1907795);
+    }
+
+    #[test]
     fn test_group_data_info() {
         let path = Path::new("./norm_factor_table/KBNvK.rtbw");
         let material = Material::from_str("KBNvK").unwrap();
@@ -1653,15 +1679,11 @@ mod tests {
         let info: InfoTable = ArrayVec::from_iter(
             [[
                 GroupDataInfo {
-                    file: 0,
                     order: [1, 15],
-                    color: White,
                     pieces: p("kBNK"),
                 },
                 GroupDataInfo {
-                    file: 0,
                     order: [1, 15],
-                    color: Black,
                     pieces: p("kBNK"),
                 },
             ]]
@@ -1682,15 +1704,11 @@ mod tests {
         let info: InfoTable = ArrayVec::from_iter(
             [[
                 GroupDataInfo {
-                    file: 0,
                     order: [0, 15],
-                    color: White,
                     pieces: p("KkQQQQ"),
                 },
                 GroupDataInfo {
-                    file: 0,
                     order: [0, 15],
-                    color: Black,
                     pieces: p("kKQQQQ"),
                 },
             ]]
