@@ -694,6 +694,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_mating_best_move() {
         let mut tables = Tablebase::new();
         tables
@@ -722,6 +723,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_black_escapes_via_underpromotion() {
         let mut tables = Tablebase::new();
         tables

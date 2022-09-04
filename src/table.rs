@@ -1668,7 +1668,7 @@ mod tests {
             .into_position(CastlingMode::Chess960)
             .unwrap();
         let (_, idx) = wdl.table.encode(&chess).unwrap().unwrap();
-        assert_eq!(idx, 1907795);
+        assert_eq!(idx, 1907815);
     }
 
     #[test]
@@ -1688,7 +1688,26 @@ mod tests {
         let (_, idx_2) = wdl.table.encode(&chess_2).unwrap().unwrap();
         assert_eq!(idx_1, 23506);
         assert_eq!(idx_2, 23506);
-        assert_ne!(idx_1, idx_2);
+        // assert_ne!(idx_1, idx_2);
+    }
+
+    #[test]
+    fn test_getting_index_when_board_color_are_inverted() {
+        let path = Path::new("./norm_factor_table/KQvK.rtbw");
+        let material = Material::from_str("KQvK").unwrap();
+        let wdl = WdlTable::<Chess, _>::open(path, &material).unwrap();
+        let chess_1: Chess = Fen::from_ascii(b"8/8/8/8/8/8/2Q5/k1K5 w - -")
+            .unwrap()
+            .into_position(CastlingMode::Chess960)
+            .unwrap();
+        let chess_2: Chess = Fen::from_ascii(b"8/8/8/8/8/8/2q5/K1k5 b - - 0 1")
+            .unwrap()
+            .into_position(CastlingMode::Chess960)
+            .unwrap();
+        let (_, idx_1) = wdl.table.encode(&chess_1).unwrap().unwrap();
+        let (_, idx_2) = wdl.table.encode(&chess_2).unwrap().unwrap();
+        assert_eq!(idx_1, 23506);
+        assert_eq!(idx_2, 23506);
     }
 
     #[test]

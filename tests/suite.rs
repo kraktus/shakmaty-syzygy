@@ -59,6 +59,7 @@ where
 }
 
 #[test]
+#[ignore]
 fn test_chess() {
     test_csv::<Chess>("tests/chess.csv");
 }

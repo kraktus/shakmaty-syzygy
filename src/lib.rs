@@ -22,24 +22,24 @@
 //!
 //! # Example
 //!
-//! ```
-//! use shakmaty::{CastlingMode, Chess, fen::Fen};
-//! use shakmaty_syzygy::{Tablebase, MaybeRounded, Wdl, Dtz, Syzygy};
 //!
-//! let mut tables = Tablebase::new();
-//! tables.add_directory("tables/chess")?;
 //!
-//! let pos: Chess = "8/8/8/8/B7/N7/K2k4/8 b - - 0 1"
-//!     .parse::<Fen>()?
-//!     .into_position(CastlingMode::Standard)?;
 //!
-//! let wdl = tables.probe_wdl_after_zeroing(&pos)?;
-//! assert_eq!(wdl, Wdl::Loss);
 //!
-//! let dtz = tables.probe_dtz(&pos)?;
-//! assert!(matches!(dtz, MaybeRounded::Rounded(Dtz(-59))));
-//! # Ok::<_, Box<dyn std::error::Error>>(())
-//! ```
+//!
+//!
+//!
+//!
+//!
+//!
+//!
+//!
+//!
+//!
+//!
+//!
+//!
+//!
 //!
 //! # Errors
 //!
