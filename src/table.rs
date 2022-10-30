@@ -1712,6 +1712,26 @@ mod tests {
     }
 
     #[test]
+    fn test_wdl_table_6() {
+        let path = Path::new("./norm_factor_table/KQQvK.rtbw");
+        let material = Material::from_str("KQQvK").unwrap();
+        let wdl = WdlTable::<Chess, _>::open(path, &material).unwrap();
+        let chess_1: Chess = Fen::from_ascii(b"8/6k1/8/8/Q7/8/Q7/K7 w - -")
+            .unwrap()
+            .into_position(CastlingMode::Chess960)
+            .unwrap();
+        let chess_2: Chess = Fen::from_ascii(b"8/6k1/8/8/8/8/8/KQ1Q4 w - -")
+            .unwrap()
+            .into_position(CastlingMode::Chess960)
+            .unwrap();
+        let (_, idx_1) = wdl.table.encode(&chess_1).unwrap().unwrap();
+        let (_, idx_2) = wdl.table.encode(&chess_2).unwrap().unwrap();
+        assert_eq!(idx_1, 120565);
+        assert_eq!(idx_2, 907);
+        // assert_ne!(idx_1, idx_2);
+    }
+
+    #[test]
     fn test_getting_index_when_board_color_are_inverted() {
         let path = Path::new("./norm_factor_table/KQvK.rtbw");
         let material = Material::from_str("KQvK").unwrap();
